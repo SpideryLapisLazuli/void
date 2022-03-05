@@ -54,7 +54,9 @@ class Game {
                 dy = Planets[j].Position.y - Planets[i].Position.y;
 
                 r = dx * dx + dy * dy;// тут R^2
-                if (r == 0) r = 1; // избегаем деления на очень маленькое число
+
+                if (r < 0.1) r = 0.1;
+
                 a = Planets[j].Mass / r;
 
                 r = sqrt(r); // тут R
@@ -73,19 +75,20 @@ class Game {
             for (int i = 0; i < Planets.size(); i++) {
                 for (int j = 0; j < Planets.size(); j++) { 
                     if (i == j) continue;
-                    blind(i,j);
+                    float dx, dy, r;
+                    dx = Planets[j].Position.x - Planets[i].Position.x;
+                    dy = Planets[j].Position.y - Planets[i].Position.y;
+
+                    r = dx * dx + dy * dy;
+                    if (r < 0.1) r = 0.1;
+                    if (r < Planets[i].R * 10 + Planets[j].R * 10) {
+                        push(i, j);
+                    }
                 }
             }
 
     }
     void blind(int i, int j) {
-        float dx, dy, r;
-        dx = Planets[j].Position.x - Planets[i].Position.x;
-        dy = Planets[j].Position.y - Planets[i].Position.y;
-
-        r = dx * dx + dy * dy;
-
-        if (r < Planets[i].R * 10 + Planets[j].R * 10) {
             Planets[i].Position.x = (Planets[i].Position.x + Planets[j].Position.x) / 2.0;
             Planets[i].Position.y = (Planets[i].Position.y + Planets[j].Position.y) / 2.0;
             Planets[i].Speed.x = (Planets[i].Speed.x * Planets[i].Mass + Planets[j].Speed.x * Planets[j].Mass) / (Planets[j].Mass + Planets[i].Mass);
@@ -95,7 +98,10 @@ class Game {
             Planet p(Planets[i].Position, Planets[i].Speed, Planets[i].R, Planets[i].Mass);
             Planets[i] = p;
             Planets.erase(Planets.begin() + j);
-        }
+    }
+    void push(int i, int j) {//не доделал ещё но уже +- работает
+        Planets[i].Speed.x = -((Planets[i].Mass - Planets[j].Mass) * Planets[i].Speed.x + 2 * Planets[j].Mass * Planets[j].Speed.x) / (Planets[j].Mass + Planets[i].Mass);
+        Planets[i].Speed.y = -((Planets[i].Mass - Planets[j].Mass) * Planets[i].Speed.y + 2 * Planets[j].Mass * Planets[j].Speed.y) / (Planets[j].Mass + Planets[i].Mass);
     }
 public:
     void play()
