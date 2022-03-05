@@ -8,9 +8,9 @@ struct Planet {
     CircleShape Place;
     Vector2f Position;
     Vector2f Speed;
-    Vector2f Boost;
+    float R;
     int Mass;
-    Planet(Vector2i coord) {
+    Planet(Vector2f coord) {
         int rPlanet = 10;
         CircleShape Place(rPlanet);
         Place.setPosition(Vector2f(coord.x-rPlanet,coord.y-rPlanet));
@@ -18,22 +18,21 @@ struct Planet {
         Vector2f Speed(0,0);
         Vector2f Boost(0,0);
         this->Place = Place;
-        this->Position = Place.getPosition();
+        this->R = rPlanet;
+        this->Position = { Place.getPosition().x + this->R,Place.getPosition().y + this->R };
         this->Speed = Speed;
-        this->Boost = Boost;
         this->Mass = 100;
 
     }
-    Planet(Vector2i coord, Vector2f V, Vector2f a,int rPlanet,int Mass) {
+    Planet(Vector2f coord, Vector2f V,int rPlanet,int Mass) {
         CircleShape Place(rPlanet);
         Place.setPosition(Vector2f(coord.x - rPlanet, coord.y - rPlanet));
         Place.setFillColor(Color::Blue);
         Vector2f Speed(V);
-        Vector2f Boost(a);
         this->Place = Place;
-        this->Position = Place.getPosition();
+        this->R = rPlanet;
+        this->Position = { Place.getPosition().x + this->R,Place.getPosition().y + this->R };
         this->Speed = Speed;
-        this->Boost = Boost;
         this->Mass = Mass;
 
     }};
@@ -46,49 +45,57 @@ class Game {
         }
     }
     void Physics() {
-        for (size_t i = 0; i < Planets.size(); i++) {
-            for (int j = 0; j < Planets.size(); j++) {
-                if (j == i) continue;
-                float B = Planets[j].Mass / Distance(Planets[i].Position, Planets[j].Position);
-                //if (B != B) continue;
-                float hvjh = B*Direction(Planets[i].Position, Planets[j].Position).x;
-                Planets[i].Boost.x += B *Direction(Planets[i].Position, Planets[j].Position).x;
-                Planets[i].Boost.y += B *Direction(Planets[i].Position, Planets[j].Position).y;
+        float a, ax, ay, dx, dy, r;
+        for (int i = 0; i < Planets.size(); i++) { // считаем текущей
+            for (int j = 0; j < Planets.size(); j++) // считаем второй
+            {
+                if (i == j) continue;
+                dx = Planets[j].Position.x - Planets[i].Position.x;
+                dy = Planets[j].Position.y - Planets[i].Position.y;
+
+                r = dx * dx + dy * dy;// тут R^2
+                if (r == 0) r = 1; // избегаем деления на очень маленькое число
+                a = Planets[j].Mass / r;
+
+                r = sqrt(r); // тут R
+
+                ax = a * (dx / r); // a * cos
+                ay = a * (dy / r); // a * sin
+                Planets[i].Speed.x += ax;
+                Planets[i].Speed.y += ay;
             }
-        }
+            // координаты меняем позже, потому что они влияют на вычисление ускорения
+            }
         for (int i = 0; i < Planets.size(); i++) {
-            Planets[i].Speed.x += Planets[i].Boost.x;
-            Planets[i].Speed.y += Planets[i].Boost.y;
-            Planets[i].Boost = { 0,0 };
             Planets[i].Position = { Planets[i].Position.x + Planets[i].Speed.x, Planets[i].Position.y + Planets[i].Speed.y };
-                for (int j = 0; j < Planets.size(); j++) {
-                    if (j == i) continue;
-                    Debag(Planets[i].Place.getPosition(), Planets[j].Place.getPosition(), Planets[i].Position, Planets[j].Position);
-                }
-            Planets[i].Place.setPosition(Planets[i].Position);
+            Planets[i].Place.setPosition(Planets[i].Position.x - Planets[i].R, Planets[i].Position.y - Planets[i].R);
         }
+            for (int i = 0; i < Planets.size(); i++) {
+                for (int j = 0; j < Planets.size(); j++) { 
+                    if (i == j) continue;
+                    blind(i,j);
+                }
+            }
+
     }
-    void Debag(sf::Vector2f First0, sf::Vector2f Second0, sf::Vector2f Firstx, sf::Vector2f Secondx){//не рабочая хрень, которая в теории должна была все исправить
-        if (First0.x > Second0.x && Firstx.x < Secondx.x) Secondx.x = First0.x; Firstx.x = Second0.x;
-        if (First0.y > Second0.y && Firstx.y < Secondx.y) Firstx.y = Second0.y; First0.y = Secondx.y;
-    }
-    float Distance(sf::Vector2f First, sf::Vector2f Second) {
-        float x = (Second.x - First.x);
-        float y = (Second.x - First.x);
-        if (x < 0) x *= -1;
-        if (y < 0) y *= -1;
-        float p = x * x + y * y;
-        if (p <= 1) p = 1;
-        return p;
-    }
-    sf::Vector2f Direction(sf::Vector2f First, sf::Vector2f Second) {
-        float x = Second.x - First.x;
-        float y = Second.y - First.y;
-        if (x < 0) x *= -1;
-        if (y < 0) y *= -1;
-        if (x == 0 && y == 0) x = 1;
-        sf::Vector2f DirWeights(((Second.x - First.x) / (x + y)), ((Second.y - First.y) / (x + y)));
-        return DirWeights;
+    void blind(int i, int j) {
+        float dx, dy, r;
+        dx = Planets[j].Position.x - Planets[i].Position.x;
+        dy = Planets[j].Position.y - Planets[i].Position.y;
+
+        r = dx * dx + dy * dy;
+
+        if (r < Planets[i].R * 10 + Planets[j].R * 10) {
+            Planets[i].Position.x = (Planets[i].Position.x + Planets[j].Position.x) / 2.0;
+            Planets[i].Position.y = (Planets[i].Position.y + Planets[j].Position.y) / 2.0;
+            Planets[i].Speed.x = (Planets[i].Speed.x * Planets[i].Mass + Planets[j].Speed.x * Planets[j].Mass) / (Planets[j].Mass + Planets[i].Mass);
+            Planets[i].Speed.y = (Planets[i].Speed.y * Planets[i].Mass + Planets[j].Speed.y * Planets[j].Mass) / (Planets[j].Mass + Planets[i].Mass);
+            Planets[i].Mass += Planets[j].Mass;
+            Planets[i].R += Planets[j].R;
+            Planet p(Planets[i].Position, Planets[i].Speed, Planets[i].R, Planets[i].Mass);
+            Planets[i] = p;
+            Planets.erase(Planets.begin() + j);
+        }
     }
 public:
     void play()
@@ -102,7 +109,7 @@ public:
                     window.close();
                 }
                 if (event.type == sf::Event::MouseButtonPressed) {
-                    Planet p(sf::Mouse::getPosition(window));
+                    Planet p(Vector2f(sf::Mouse::getPosition(window)));
                     Planets.push_back(p);
                 }
             }
